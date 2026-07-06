@@ -1,66 +1,83 @@
 const router = require("express").Router();
-const db = require("../db/db");
 const jwt = require("jsonwebtoken");
+const db = require("../db/db");
 
 // Регистрация
 router.post("/register", async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+
+        const { login, password, email } = req.body;
 
         await db.query(
-            "SELECT create_user($1, $2, $3)",
-            [name, email, password]
+            "SELECT create_user($1,$2,$3)",
+            [login, password, email]
         );
 
         res.json({
-            message: "Пользователь создан"
+            message: "Пользователь зарегистрирован"
         });
 
-    } catch (e) {
-        console.log(e);
+    } catch (err) {
+
+        console.error(err);
 
         res.status(500).json({
-            message: "Ошибка"
+            message: "Ошибка регистрации"
         });
+
     }
 });
 
-// 👇 ВСТАВЛЯЕШЬ СЮДА КОД ВХОДА
+// Авторизация
 router.post("/login", async (req, res) => {
 
-    const { email, password } = req.body;
+    try {
 
-    const result = await db.query(
-        `SELECT id, name, email
-         FROM users
-         WHERE email = $1
-         AND password = $2`,
-        [email, password]
-    );
+        const { login, password } = req.body;
 
-    if (result.rows.length === 0) {
-        return res.status(401).json({
-            message: "Неверный логин или пароль"
-        });
-    }
+        const result = await db.query(
+            `
+            SELECT id, login, email
+            FROM users
+            WHERE login = $1
+              AND pass = $2
+            `,
+            [login, password]
+        );
 
-    const user = result.rows[0];
-
-    const token = jwt.sign(
-        {
-            id: user.id,
-            email: user.email
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: "7d"
+        if (result.rows.length === 0) {
+            return res.status(401).json({
+                message: "Неверный логин или пароль"
+            });
         }
-    );
 
-    res.json({
-        token,
-        user
-    });
+        const user = result.rows[0];
+
+        const token = jwt.sign(
+            {
+                id: user.id,
+                login: user.login
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
+        );
+
+        res.json({
+            token,
+            user
+        });
+
+    } catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+            message: "Ошибка авторизации"
+        });
+
+    }
 
 });
 
