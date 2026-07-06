@@ -1,0 +1,288 @@
+Table users {
+  id int [primary key]
+  email string [unique, not null]
+  login string [unique, not null]
+  pass string [not null]
+  phone string
+  address text
+  city string
+  postal_code string
+  created_at timestamp [default: 'now()']
+  updated_at timestamp [default: 'now()']
+  
+  indexes {
+    email [unique]
+    login [unique]
+    created_at
+  }
+}
+
+Table categories {
+  id int [primary key]
+  name string [unique, not null]
+  description text
+  image_url string
+  created_at timestamp [default: 'now()']
+}
+
+Table product {
+  id int [primary key]
+  name string [not null]
+  category_id int [ref: > categories.id]
+  description text
+  image_url string
+  avg_rating decimal
+  total_reviews int [default: 0]
+  created_at timestamp [default: 'now()']
+  updated_at timestamp [default: 'now()']
+  
+  indexes {
+    category_id
+    created_at
+  }
+}
+
+Table product_option {
+  id int [primary key]
+  product_id int [ref: > product.id, not null]
+  name string [not null]
+  prise int [not null]
+  sku string [unique]
+  created_at timestamp [default: 'now()']
+  
+  indexes {
+    product_id
+    sku
+  }
+}
+
+// ============ СКЛАД (Отдельная область) ============
+
+Table warehouse {
+  id int [primary key]
+  name string [not null]
+  address text
+  created_at timestamp [default: 'now()']
+}
+
+Table inventory {
+  id int [primary key]
+  product_option_id int [ref: > product_option.id, not null]
+  warehouse_id int [ref: > warehouse.id, not null]
+  quantity int [not null, default: 0]
+  reserved_quantity int [default: 0]
+  available_quantity int [default: 0]
+  last_updated timestamp [default: 'now()']
+  
+  indexes {
+    product_option_id
+    warehouse_id
+  }
+}
+
+Table inventory_history {
+  id int [primary key]
+  product_option_id int [ref: > product_option.id, not null]
+  warehouse_id int [ref: > warehouse.id]
+  quantity_before int
+  quantity_after int
+  change_reason string
+  changed_at timestamp [default: 'now()']
+  
+  indexes {
+    product_option_id
+    changed_at
+  }
+}
+
+// ============ КОРЗИНА ============
+
+Table cart {
+  id int [primary key]
+  user_id int [ref: > users.id, not null]
+  created_at timestamp [default: 'now()']
+  updated_at timestamp [default: 'now()']
+  
+  indexes {
+    user_id
+    updated_at
+  }
+}
+
+Table cart_item {
+  id int [primary key]
+  cart_id int [ref: > cart.id, not null]
+  product_option_id int [ref: > product_option.id, not null]
+  quantity int [not null]
+  added_at timestamp [default: 'now()']
+  
+  indexes {
+    cart_id
+    product_option_id
+  }
+}
+
+// ============ ЗАКАЗЫ ============
+
+Table order_status {
+  id int [primary key]
+  name string [unique, not null]
+  description text
+}
+
+Table orders {
+  id int [primary key]
+  user_id int [ref: > users.id, not null]
+  order_status_id int [ref: > order_status.id, not null]
+  delivery_method_id int [ref: > delivery_method.id]
+  promo_code_id int [ref: > promo_codes.id]
+  subtotal int [not null]
+  discount_amount int [default: 0]
+  delivery_cost int [default: 0]
+  total int [not null]
+  created_at timestamp [default: 'now()']
+  updated_at timestamp [default: 'now()']
+  estimated_delivery date
+  
+  indexes {
+    user_id
+    order_status_id
+    created_at
+  }
+}
+
+Table order_item {
+  id int [primary key]
+  order_id int [ref: > orders.id, not null]
+  product_option_id int [ref: > product_option.id, not null]
+  quantity int [not null]
+  price_at_purchase int [not null]
+  total_price int [not null]
+  
+  indexes {
+    order_id
+    product_option_id
+  }
+}
+
+Table order_payment {
+  id int [primary key]
+  order_id int [ref: > orders.id, not null]
+  payment_method string [not null]
+  payment_status string [not null]
+  amount int [not null]
+  transaction_id string
+  paid_at timestamp
+  created_at timestamp [default: 'now()']
+  
+  indexes {
+    order_id
+    payment_status
+  }
+}
+
+// ============ ДОСТАВКА И СКИДКИ ============
+
+Table delivery_method {
+  id int [primary key]
+  name string [unique, not null]
+  description text
+  cost int
+  delivery_days int
+}
+
+Table promo_codes {
+  id int [primary key]
+  code string [unique, not null]
+  discount_percent decimal
+  discount_amount int
+  max_uses int
+  current_uses int [default: 0]
+  valid_from timestamp
+  valid_until timestamp
+  is_active boolean [default: true]
+  
+  indexes {
+    code
+    is_active
+  }
+}
+
+// ============ ОТЗЫВЫ И ИЗБРАННОЕ ============
+
+Table reviews {
+  id int [primary key]
+  product_id int [ref: > product.id, not null]
+  user_id int [ref: > users.id, not null]
+  rating int [not null]
+  text text
+  created_at timestamp [default: 'now()']
+  
+  indexes {
+    product_id
+    user_id
+  }
+}
+
+Table wishlist {
+  id int [primary key]
+  user_id int [ref: > users.id, not null]
+  product_id int [ref: > product.id, not null]
+  added_at timestamp [default: 'now()']
+  
+  indexes {
+    user_id
+    product_id
+  }
+}
+
+// ============ УВЕДОМЛЕНИЯ ============
+
+Table notifications {
+  id int [primary key]
+  user_id int [ref: > users.id, not null]
+  order_id int [ref: > orders.id]
+  message text [not null]
+  type string [not null]
+  is_read boolean [default: false]
+  created_at timestamp [default: 'now()']
+  
+  indexes {
+    user_id
+    is_read
+  }
+}
+
+// ============ СПЕЦИФИКАЦИИ ============
+
+Table specifications {
+  id int [primary key]
+  name string [unique, not null]
+  description text
+}
+
+Table specifications_option {
+  id int [primary key]
+  product_option_id int [ref: > product_option.id, not null]
+  specifications_id int [ref: > specifications.id, not null]
+  value string [not null]
+  
+  indexes {
+    product_option_id
+    specifications_id
+  }
+}
+
+// ============ ФОТО ============
+
+Table photo {
+  id int [primary key]
+  product_option_id int [ref: > product_option.id, not null]
+  link string [not null]
+  sort_order int [default: 0]
+  created_at timestamp [default: 'now()']
+  
+  indexes {
+    product_option_id
+  }
+}
