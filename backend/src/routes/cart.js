@@ -3,27 +3,46 @@ const db = require("../db/db");
 const auth = require("../middleware/authMiddleware");
 
 // Получить корзину
+// Получить корзину пользователя (с полными данными товаров)
 router.get("/", auth, async (req, res) => {
-
     try {
+        const userId = req.user.id;
 
-        const result = await db.query(
-            "SELECT * FROM view_cart($1)",
-            [req.user.id]
+        // 1. Ищем активную корзину
+        const cartRes = await db.query(
+            "SELECT id FROM cart WHERE users_id = $1 AND status = 'active'",
+            [userId]
         );
 
-        res.json(result.rows);
+        if (cartRes.rows.length === 0) {
+            return res.json([]); // Корзина пуста
+        }
 
+        const cartId = cartRes.rows[0].id;
+
+        // 2. Получаем товары с названиями, ценами и картинками
+        const items = await db.query(
+            `
+            SELECT 
+                pc.product_option_id AS id,
+                p.name AS product_name,
+                po.name AS option_name,
+                po.prise AS price,
+                pc.total AS quantity,
+                (SELECT link FROM photo WHERE product_option_id = po.id LIMIT 1) AS image
+            FROM product_cart pc
+            JOIN product_option po ON pc.product_option_id = po.id
+            JOIN product p ON po.product_id = p.id
+            WHERE pc.cart_id = $1
+            `,
+            [cartId]
+        );
+
+        res.json(items.rows);
     } catch (err) {
-
         console.error(err);
-
-        res.status(500).json({
-            message: "Ошибка получения корзины"
-        });
-
+        res.status(500).json({ message: "Ошибка получения корзины" });
     }
-
 });
 
 // Добавить товар
